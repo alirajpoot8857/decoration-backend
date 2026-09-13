@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const galleryController_js_1 = require("../controllers/galleryController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.get('/', galleryController_js_1.listGallery);
+router.post('/', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, galleryController_js_1.createGalleryImage);
+router.put('/:id', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, galleryController_js_1.updateGalleryImage);
+router.delete('/:id', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, galleryController_js_1.deleteGalleryImage);
+exports.default = router;

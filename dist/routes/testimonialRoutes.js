@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const testimonialController_js_1 = require("../controllers/testimonialController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.get('/', testimonialController_js_1.listTestimonials);
+router.post('/', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, testimonialController_js_1.createTestimonial);
+router.put('/:id', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, testimonialController_js_1.updateTestimonial);
+router.delete('/:id', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, testimonialController_js_1.deleteTestimonial);
+exports.default = router;

@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const inventoryController_js_1 = require("../controllers/inventoryController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.use(auth_js_1.authenticate);
+router.use(authorize_js_1.requireStaffOrAdmin);
+router.get('/', inventoryController_js_1.listInventory);
+router.get('/:id', inventoryController_js_1.getInventoryItem);
+router.post('/', inventoryController_js_1.createInventoryItem);
+router.put('/:id', inventoryController_js_1.updateInventoryItem);
+router.delete('/:id', inventoryController_js_1.deleteInventoryItem);
+router.post('/:id/adjust', inventoryController_js_1.adjustStock);
+exports.default = router;

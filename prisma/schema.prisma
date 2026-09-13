@@ -1,0 +1,320 @@
+// Prisma Schema for LUMIÈRE DECOR
+// Supports SQLite (default) and PostgreSQL via DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  role      String   @default("CUSTOMER") // ADMIN, STAFF, CUSTOMER
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer     Customer?
+  activityLogs ActivityLog[]
+}
+
+model Customer {
+  id         String   @id @default(uuid())
+  userId     String?  @unique
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  email      String   @unique
+  phone      String?
+  address    String?
+  notes      String?
+  totalSpend Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  bookings       Booking[]
+  rentalRequests RentalRequest[]
+  sales          Sale[]
+}
+
+model Service {
+  id              String   @id @default(uuid())
+  title           String
+  slug            String   @unique
+  subtitle        String?
+  description     String
+  icon            String?
+  imageUrl        String
+  priceStartingAt Float    @default(0)
+  features        String   @default("[]") // JSON string array
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Package {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  tier          String   // ESSENTIAL, SIGNATURE, ROYAL
+  tagline       String
+  description   String
+  price         Float
+  duration      String?  // e.g. "Full Day Setup"
+  guestCapacity String?  // e.g. "Up to 250 Guests"
+  features      String   @default("[]") // JSON string array of included features
+  isRecommended Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  displayOrder  Int      @default(0)
+  imageUrl      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+model GalleryImage {
+  id           String   @id @default(uuid())
+  title        String
+  category     String   // Luxury weddings, Floral stages, Mehndi setups, Birthday themes, Outdoor décor, Reception tables, Entrance décor, Romantic candle setups
+  description  String?
+  imageUrl     String
+  isFeatured   Boolean  @default(false)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  eventType    String?
+  tags         String   @default("[]") // JSON string array
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model RentalItem {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  category          String   // Chairs, Tables, Flower arrangements, Arches, Stage décor, Candles, Lighting, Backdrops, Centerpieces, Decorative props
+  description       String
+  imageUrl          String
+  rentalPrice       Float    // Daily rate
+  hourlyRate        Float    @default(0) // Hourly rate
+  replacementCost   Float    @default(0)
+  depositAmount     Float    @default(0)
+  totalQuantity     Int      @default(1)
+  availableQuantity Int      @default(1)
+  rentedQuantity    Int      @default(0)
+  status            String   @default("AVAILABLE") // AVAILABLE, LOW_STOCK, OUT_OF_STOCK, MAINTENANCE
+  dimensions        String?
+  material          String?
+  notes             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model RentalRequest {
+  id            String    @id @default(uuid())
+  rentalNumber  String    @unique
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName  String
+  customerEmail String
+  customerPhone String
+  eventDate     DateTime
+  returnDate    DateTime
+  rentalMode    String    @default("DAILY") // DAILY or HOURLY
+  rentalHours   Int       @default(24)
+  status        String    @default("PENDING") // PENDING, APPROVED, RENTED, RETURNED, CANCELLED
+  itemsJson     String    // JSON string array of { itemId, name, quantity, price, hourlyRate, deposit, imageUrl, durationMode }
+  discount      Float     @default(0)
+  subtotal      Float     @default(0)
+  deposit       Float     @default(0)
+  totalAmount   Float     @default(0)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Inventory {
+  id                String    @id @default(uuid())
+  sku               String    @unique
+  name              String
+  category          String
+  quantity          Int       @default(0)
+  availableQuantity Int       @default(0)
+  minThreshold      Int       @default(5)
+  purchaseCost      Float     @default(0)
+  rentalPrice       Float     @default(0) // Daily
+  hourlyRate        Float     @default(0) // Hourly
+  location          String?
+  status            String    @default("IN_STOCK") // IN_STOCK, LOW_STOCK, OUT_OF_STOCK
+  notes             String?
+  lastRestockedAt   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
+}
+
+model Booking {
+  id              String    @id @default(uuid())
+  bookingNumber   String    @unique
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  eventType       String    // Wedding, Birthday, Corporate, Engagement, Mehndi, Reception, Anniversary, Other
+  eventDate       DateTime
+  venue           String
+  guestCount      Int       @default(50)
+  budget          Float     @default(0)
+  packageId       String?
+  package         Package?  @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  packageName     String?
+  status          String    @default("PENDING") // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+  specialRequests String?
+  internalNotes   String?
+  totalAmount     Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  event Event?
+}
+
+model Event {
+  id             String    @id @default(uuid())
+  title          String
+  bookingId      String?   @unique
+  booking        Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  eventType      String
+  eventDate      DateTime
+  endDate        DateTime?
+  venue          String
+  clientName     String
+  clientPhone    String?
+  status         String    @default("SCHEDULED") // SCHEDULED, SETUP_IN_PROGRESS, LIVE, COMPLETED, CANCELLED
+  setupTeamNotes String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Sale {
+  id            String     @id @default(uuid())
+  saleNumber    String     @unique
+  customerId    String?
+  customer      Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName  String
+  customerEmail String?
+  customerPhone String?
+  subtotal      Float      @default(0)
+  discount      Float      @default(0)
+  tax           Float      @default(0)
+  total         Float      @default(0)
+  paymentStatus String     @default("PAID") // PAID, UNPAID, PARTIAL
+  saleDate      DateTime   @default(now())
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id          String     @id @default(uuid())
+  saleId      String
+  sale        Sale       @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  inventoryId String?
+  inventory   Inventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  itemName    String
+  quantity    Int        @default(1)
+  unitPrice   Float      @default(0)
+  total       Float      @default(0)
+}
+
+model Purchase {
+  id              String         @id @default(uuid())
+  purchaseNumber  String         @unique
+  supplierName    String
+  supplierContact String?
+  subtotal        Float          @default(0)
+  tax             Float          @default(0)
+  total           Float          @default(0)
+  paymentStatus   String         @default("PAID") // PAID, UNPAID
+  purchaseDate    DateTime       @default(now())
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  items           PurchaseItem[]
+}
+
+model PurchaseItem {
+  id          String     @id @default(uuid())
+  purchaseId  String
+  purchase    Purchase   @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  inventoryId String?
+  inventory   Inventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  itemName    String
+  quantity    Int        @default(1)
+  unitCost    Float      @default(0)
+  total       Float      @default(0)
+}
+
+model Testimonial {
+  id           String   @id @default(uuid())
+  clientName   String
+  clientRole   String   // e.g. "Bride & Groom", "Corporate Event Lead"
+  eventType    String   // e.g. "Royal Wedding at The Grand Palm"
+  comment      String
+  rating       Int      @default(5)
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  isFeatured   Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ContactInquiry {
+  id            String   @id @default(uuid())
+  name          String
+  email         String
+  phone         String?
+  eventType     String?
+  eventDate     String?
+  message       String
+  status        String   @default("NEW") // NEW, READ, CONTACTED, ARCHIVED
+  internalNotes String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ActivityLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName     String?
+  userRole     String?
+  action       String   // CREATE, UPDATE, DELETE, STATUS_CHANGE, PRICE_CHANGE, LOGIN, APPROVE
+  module       String   // PACKAGES, SERVICES, GALLERY, RENTALS, INVENTORY, SALES, PURCHASES, BOOKINGS, USERS, SETTINGS, AUTH
+  description  String
+  metadataJson String?  // JSON string containing relevant payload or change details (no passwords)
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  category    String   @default("GENERAL") // GENERAL, BRANDING, FINANCIAL, CONTACT
+  description String?
+  updatedAt   DateTime @updatedAt
+}

@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const purchaseController_js_1 = require("../controllers/purchaseController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.use(auth_js_1.authenticate);
+router.use(authorize_js_1.requireStaffOrAdmin);
+router.get('/', purchaseController_js_1.listPurchases);
+router.get('/:id', purchaseController_js_1.getPurchase);
+router.post('/', purchaseController_js_1.createPurchase);
+router.put('/:id/status', purchaseController_js_1.updatePurchaseStatus);
+router.delete('/:id', purchaseController_js_1.deletePurchase);
+exports.default = router;

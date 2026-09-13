@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const customerController_js_1 = require("../controllers/customerController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.use(auth_js_1.authenticate);
+router.use(authorize_js_1.requireStaffOrAdmin);
+router.get('/', customerController_js_1.listCustomers);
+router.get('/:id', customerController_js_1.getCustomer);
+router.post('/', customerController_js_1.createCustomer);
+router.put('/:id', customerController_js_1.updateCustomer);
+router.delete('/:id', customerController_js_1.deleteCustomer);
+exports.default = router;

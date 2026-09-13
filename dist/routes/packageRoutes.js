@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const packageController_js_1 = require("../controllers/packageController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.get('/', packageController_js_1.listPackages);
+router.get('/:slug', packageController_js_1.getPackageBySlug);
+router.post('/', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, packageController_js_1.createPackage);
+router.put('/:id', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, packageController_js_1.updatePackage);
+router.delete('/:id', auth_js_1.authenticate, authorize_js_1.requireStaffOrAdmin, packageController_js_1.deletePackage);
+exports.default = router;

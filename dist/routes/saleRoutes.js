@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const saleController_js_1 = require("../controllers/saleController.js");
+const auth_js_1 = require("../middleware/auth.js");
+const authorize_js_1 = require("../middleware/authorize.js");
+const router = (0, express_1.Router)();
+router.use(auth_js_1.authenticate);
+router.use(authorize_js_1.requireStaffOrAdmin);
+router.get('/unified', saleController_js_1.getUnifiedSalesLedger);
+router.get('/', saleController_js_1.listSales);
+router.get('/:id', saleController_js_1.getSale);
+router.post('/', saleController_js_1.createSale);
+router.put('/:id/status', saleController_js_1.updateSaleStatus);
+router.delete('/:id', saleController_js_1.deleteSale);
+exports.default = router;
