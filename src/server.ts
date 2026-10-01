@@ -42,7 +42,7 @@ const allowedOrigins = [
     : []),
 ];
 
-// Security & Utility Middlewares
+// Security Middleware
 app.use(
   helmet({
     crossOriginResourcePolicy: {
@@ -51,7 +51,7 @@ app.use(
   })
 );
 
-// CORS
+// CORS Configuration
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -60,9 +60,9 @@ app.use(
         return callback(null, true);
       }
 
-      // Allow only configured origins
+      // Allow configured origins
       if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+        return callback(null, origin);
       }
 
       console.warn(`CORS blocked origin: ${origin}`);
