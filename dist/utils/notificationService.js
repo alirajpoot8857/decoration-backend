@@ -27,14 +27,14 @@ const prisma_js_1 = __importDefault(require("./prisma.js"));
  * 5. Order Approved / Confirmed Status Updates (Customer receipt & delivery schedules)
  */
 exports.NOTIFICATION_CONFIG = {
-    ADMIN_EMAIL: 'work443366@gmail.com',
+    ADMIN_EMAIL: 'alirajpoot8857@gmail.com',
     ADMIN_WHATSAPP: '03140660985',
     ADMIN_WHATSAPP_INTL: '923140660985',
     STUDIO_NAME: 'LUMIÈRE DÉCOR',
     STUDIO_TAGLINE: 'Haute Scénographie & Luxury Event Architecture',
     DASHBOARD_BASE_URL: 'http://localhost:3000',
-    STUDIO_ADDRESS: '9450 Wilshire Blvd, Suite 800, Beverly Hills, CA 90212',
-    CONCIERGE_EMAIL: 'concierge@lumieredecor.com',
+    STUDIO_ADDRESS: 'Gulberg III, Lahore, Pakistan',
+    CONCIERGE_EMAIL: 'alirajpoot8857@gmail.com',
 };
 async function getAdminNotificationEmail() {
     try {
@@ -109,15 +109,23 @@ async function getTransporter() {
         (process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD.trim());
     if (effectiveGmailUser && effectiveGmailPass) {
         const transporter = nodemailer_1.default.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // SSL
             auth: {
                 user: effectiveGmailUser,
                 pass: effectiveGmailPass.replace(/\s+/g, ''),
             },
+            tls: {
+                rejectUnauthorized: false,
+            },
+            connectionTimeout: 15000,
+            greetingTimeout: 10000,
+            socketTimeout: 20000,
         });
         return {
             transporter,
-            providerName: `Google Gmail Service (${effectiveGmailUser})`,
+            providerName: `Google Gmail Service (SSL:465 -> ${effectiveGmailUser})`,
             isRealDelivery: true,
             fromAddress: effectiveGmailUser,
         };
@@ -134,6 +142,7 @@ async function getTransporter() {
                 pass: process.env.SMTP_PASS.trim(),
             },
             tls: { rejectUnauthorized: false },
+            connectionTimeout: 10000,
         });
         return {
             transporter,
@@ -142,35 +151,15 @@ async function getTransporter() {
             fromAddress: process.env.SMTP_USER.trim(),
         };
     }
-    // 5. Fallback Ethereal Transport for Development / Test Sandbox
-    try {
-        if (!cachedTestAccount) {
-            cachedTestAccount = await nodemailer_1.default.createTestAccount();
-        }
-        const transporter = nodemailer_1.default.createTransport({
-            host: 'smtp.ethereal.email',
-            port: 587,
-            secure: false,
-            auth: {
-                user: cachedTestAccount.user,
-                pass: cachedTestAccount.pass,
-            },
-        });
-        return {
-            transporter,
-            providerName: 'Ethereal Test Sandbox (Development)',
-            isRealDelivery: false,
-            fromAddress: dbSettingsMap.contact_email || `concierge@lumieredecor.com`,
-        };
-    }
-    catch (err) {
-        return {
-            transporter: nodemailer_1.default.createTransport({ jsonTransport: true }),
-            providerName: 'JSON Fallback Logger',
-            isRealDelivery: false,
-            fromAddress: dbSettingsMap.contact_email || `concierge@lumieredecor.com`,
-        };
-    }
+    // 4. If credentials missing, log clear instruction
+    console.warn(`\n⚠️  [REAL INBOX EMAIL NOTICE]: To receive real emails in your inbox (${effectiveGmailUser || 'alirajpoot8857@gmail.com'}), enter your 16-character Google App Password in Admin Settings > Gmail / SMTP or backend/.env (GMAIL_APP_PASSWORD=xxxx).\n`);
+    // 5. Fallback JSON Transport to avoid ETIMEDOUT on blocked local ISPs
+    return {
+        transporter: nodemailer_1.default.createTransport({ jsonTransport: true }),
+        providerName: 'Sandbox Emulation (Real App Password Pending in Settings)',
+        isRealDelivery: false,
+        fromAddress: dbSettingsMap.contact_email || `concierge@lumieredecor.com`,
+    };
 }
 /* ========================================================================= */
 /* TEMPLATE 1: NEW RENTAL ORDER                                              */
@@ -178,7 +167,7 @@ async function getTransporter() {
 function buildRentalOrderEmailHtml(payload, isCustomerCopy = false) {
     const formattedStart = payload.eventDate ? new Date(payload.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
     const formattedReturn = payload.returnDate ? new Date(payload.returnDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Same Day';
-    const dashboardLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/admin/rentals`;
+    const customerPortalLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/portal`;
     const itemsHtml = (payload.items || [])
         .map((it) => `
       <tr style="border-bottom: 1px solid #e8dec8;">
@@ -335,10 +324,10 @@ function buildRentalOrderEmailHtml(payload, isCustomerCopy = false) {
           `
         : ''}
 
-          <!-- CTA Button -->
+          <!-- CTA Button (Customer Portal) -->
           <div style="text-align: center; margin: 32px 0 10px 0;">
-            <a href="${dashboardLink}" style="background: #141210; color: #f7f4ef; border: 1px solid #d4af37; padding: 14px 34px; border-radius: 30px; text-decoration: none; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
-              ${isCustomerCopy ? 'Access Order in Portal' : 'View Order in Admin Dashboard'} &rarr;
+            <a href="${customerPortalLink}" style="background: #141210; color: #f7f4ef; border: 1px solid #d4af37; padding: 14px 34px; border-radius: 30px; text-decoration: none; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+              Access Order in Customer Portal &rarr;
             </a>
           </div>
 
@@ -363,8 +352,7 @@ function buildConsultationBookingEmailHtml(payload, isCustomerCopy = false) {
     const formattedEventDate = payload.eventDate
         ? new Date(payload.eventDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
         : 'Date pending';
-    const dashboardLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/admin/bookings`;
-    const portalLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/portal`;
+    const customerPortalLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/portal`;
     return `
     <!DOCTYPE html>
     <html>
@@ -456,8 +444,8 @@ function buildConsultationBookingEmailHtml(payload, isCustomerCopy = false) {
         : ''}
 
           <div style="text-align: center; margin: 32px 0 10px 0;">
-            <a href="${isCustomerCopy ? portalLink : dashboardLink}" style="background: #141210; color: #f7f4ef; border: 1px solid #d4af37; padding: 14px 34px; border-radius: 30px; text-decoration: none; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
-              ${isCustomerCopy ? 'View Consultation in Portal' : 'Review Booking in Admin Dashboard'} &rarr;
+            <a href="${customerPortalLink}" style="background: #141210; color: #f7f4ef; border: 1px solid #d4af37; padding: 14px 34px; border-radius: 30px; text-decoration: none; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+              View Booking in Customer Portal &rarr;
             </a>
           </div>
         </div>
@@ -478,7 +466,7 @@ function buildConsultationBookingEmailHtml(payload, isCustomerCopy = false) {
 /* ========================================================================= */
 function buildGalleryOrderEmailHtml(payload, isCustomerCopy = false) {
     const formattedEventDate = payload.eventDate ? new Date(payload.eventDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : 'TBD';
-    const dashboardLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/admin/gallery`;
+    const customerPortalLink = `${exports.NOTIFICATION_CONFIG.DASHBOARD_BASE_URL}/portal`;
     return `
     <!DOCTYPE html>
     <html>
@@ -562,8 +550,8 @@ function buildGalleryOrderEmailHtml(payload, isCustomerCopy = false) {
         : ''}
 
           <div style="text-align: center; margin: 32px 0 10px 0;">
-            <a href="${dashboardLink}" style="background: #141210; color: #f7f4ef; border: 1px solid #d4af37; padding: 14px 34px; border-radius: 30px; text-decoration: none; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
-              Inspect Commission in Dashboard &rarr;
+            <a href="${customerPortalLink}" style="background: #141210; color: #f7f4ef; border: 1px solid #d4af37; padding: 14px 34px; border-radius: 30px; text-decoration: none; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: bold; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+              Track Commission in Customer Portal &rarr;
             </a>
           </div>
         </div>

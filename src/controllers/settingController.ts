@@ -53,31 +53,40 @@ export const updateSetting = async (req: AuthenticatedRequest, res: Response): P
 
 export const bulkUpdateSettings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { settings } = req.body;
+    const rawSettings = (req.body && req.body.settings) ? req.body.settings : req.body;
 
-    if (!settings || typeof settings !== 'object') {
+    if (!rawSettings || typeof rawSettings !== 'object') {
       res.status(400).json({ success: false, message: 'Settings object required' });
       return;
     }
 
-    for (const [key, value] of Object.entries(settings)) {
+    const updatedKeys: string[] = [];
+
+    for (const [key, value] of Object.entries(rawSettings)) {
+      if (value === undefined || value === null || typeof value === 'function') continue;
+      
+      const strVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
+
       await prisma.setting.upsert({
         where: { key },
-        update: { value: String(value) },
-        create: { key, value: String(value), category: 'GENERAL' },
+        update: { value: strVal },
+        create: { key, value: strVal, category: 'GENERAL' },
       });
+
+      updatedKeys.push(key);
     }
 
     await logActivity({
       req,
       action: 'BULK_UPDATE_SETTINGS',
       module: 'SETTINGS',
-      description: `Bulk updated system settings`,
-      metadata: { updatedKeys: Object.keys(settings) },
+      description: `Bulk updated system settings (${updatedKeys.length} keys)`,
+      metadata: { updatedKeys },
     });
 
-    res.json({ success: true, message: 'Settings updated successfully' });
+    res.json({ success: true, message: 'Settings updated successfully', updatedCount: updatedKeys.length });
   } catch (error: any) {
+    console.error('bulkUpdateSettings error:', error);
     res.status(500).json({ success: false, message: error.message || 'Failed to update settings' });
   }
 };

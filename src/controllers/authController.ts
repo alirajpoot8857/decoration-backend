@@ -15,8 +15,9 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
+  role: z.enum(['CUSTOMER', 'STAFF', 'ADMIN']).optional(),
 });
 
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -36,7 +37,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (existingUser) {
-      res.status(400).json({ success: false, message: 'Email already in use' });
+      res.status(400).json({ success: false, message: 'An account with this email already exists' });
       return;
     }
 
@@ -110,14 +111,43 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
-      res.status(401).json({ success: false, message: 'Invalid email or password' });
+      res.status(401).json({
+        success: false,
+        message: 'No account found with this email. Please check your email or create an account.',
+      });
       return;
     }
 
     const isMatch = await bcrypt.compare(validatedData.password, user.password);
     if (!isMatch) {
-      res.status(401).json({ success: false, message: 'Invalid email or password' });
+      res.status(401).json({
+        success: false,
+        message: 'Incorrect password. Please verify your credentials and try again.',
+      });
       return;
+    }
+
+    // Role Verification based on portal submitted
+    if (validatedData.role) {
+      const requestedRole = validatedData.role;
+
+      if (requestedRole === 'ADMIN' && user.role !== 'ADMIN') {
+        res.status(403).json({
+          success: false,
+          message: user.role === 'STAFF'
+            ? 'Access Denied: This is a Staff account. Please sign in via the Staff Terminal tab.'
+            : 'Access Denied: This email belongs to a Private Client account and does not have Executive Admin privileges.',
+        });
+        return;
+      }
+
+      if (requestedRole === 'STAFF' && user.role !== 'STAFF' && user.role !== 'ADMIN') {
+        res.status(403).json({
+          success: false,
+          message: 'Access Denied: This email is registered as a Private Client, not a Staff Operations member.',
+        });
+        return;
+      }
     }
 
     const token = generateToken({

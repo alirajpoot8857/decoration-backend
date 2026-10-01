@@ -79,7 +79,7 @@ export const listRentalItems = async (req: Request, res: Response): Promise<void
 
     const items = await prisma.rentalItem.findMany({
       where,
-      orderBy: { name: 'asc' },
+      orderBy: [{ createdAt: 'asc' }],
     });
 
     // Dynamically calculate availability taking active bookings/dates into consideration
@@ -374,18 +374,34 @@ export const submitRentalRequest = async (req: AuthenticatedRequest, res: Respon
       return;
     }
 
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const eventDateOnly = String(eventDate).split('T')[0];
+    const returnDateOnly = String(returnDate).split('T')[0];
+
+    if (eventDateOnly < todayDateStr) {
+      res.status(400).json({ success: false, message: 'Event start date cannot be in the past' });
+      return;
+    }
+
+    if (returnDateOnly < eventDateOnly) {
+      res.status(400).json({ success: false, message: 'Return date cannot be earlier than event start date' });
+      return;
+    }
+
     let subtotal = 0;
     let totalDeposit = 0;
     const validatedItems: any[] = [];
 
-    // Calculate days duration for Daily mode
-    let daysCount = 1;
-    if (eventDate && returnDate) {
-      const start = new Date(eventDate);
-      const end = new Date(returnDate);
-      const diffMs = Math.abs(end.getTime() - start.getTime());
-      daysCount = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    // Calculate days duration for Daily mode (without Math.abs)
+    const start = new Date(eventDate);
+    const end = new Date(returnDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end.getTime() < start.getTime()) {
+      res.status(400).json({ success: false, message: 'Invalid event or return date provided' });
+      return;
     }
+
+    const diffMs = end.getTime() - start.getTime();
+    const daysCount = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
     const isHourly = rentalMode === 'HOURLY';
     const hours = Math.max(1, Number(rentalHours) || 4);
@@ -737,6 +753,22 @@ export const checkRentalAvailability = async (req: Request, res: Response): Prom
     if (!items || !Array.isArray(items)) {
       res.status(400).json({ success: false, message: 'Items array is required' });
       return;
+    }
+
+    if (eventDate && returnDate) {
+      const todayDateStr = new Date().toISOString().split('T')[0];
+      const eventDateOnly = String(eventDate).split('T')[0];
+      const returnDateOnly = String(returnDate).split('T')[0];
+
+      if (eventDateOnly < todayDateStr) {
+        res.status(400).json({ success: false, message: 'Event start date cannot be in the past' });
+        return;
+      }
+
+      if (returnDateOnly < eventDateOnly) {
+        res.status(400).json({ success: false, message: 'Return date cannot be earlier than event start date' });
+        return;
+      }
     }
 
     const availabilityResults = await Promise.all(
