@@ -38,6 +38,7 @@ const allowedOrigins = [
   'http://decordesigns.online',
   'https://www.decordesigns.online',
   'http://www.decordesigns.online',
+
   ...(process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
     : []),
@@ -46,7 +47,9 @@ const allowedOrigins = [
 // Security & Utility Middlewares
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginResourcePolicy: {
+      policy: 'cross-origin',
+    },
   })
 );
 
@@ -54,8 +57,11 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, server-to-server)
-      if (!origin) return callback(null, true);
+      // Allow requests with no origin
+      // (mobile apps, curl, server-to-server, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
 
       if (
         allowedOrigins.includes(origin) ||
@@ -68,22 +74,37 @@ app.use(
 
       return callback(new Error('Not allowed by CORS'));
     },
+
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'OPTIONS',
+    ],
+
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+    ],
   })
 );
 
-// Explicitly handle CORS preflight requests
-app.options('*', cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  express.json({
+    limit: '20mb',
+  })
+);
 
-app.use(express.json({ limit: '20mb' }));
-app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '20mb',
+  })
+);
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
@@ -91,7 +112,11 @@ if (process.env.NODE_ENV !== 'test') {
 
 // Static Uploads Directory
 const uploadsDir = path.join(process.cwd(), 'uploads');
-app.use('/uploads', express.static(uploadsDir));
+
+app.use(
+  '/uploads',
+  express.static(uploadsDir)
+);
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -132,7 +157,10 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(
       `✨ LUMIÈRE DECOR API Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`
     );
-    console.log(`🔗 API Base: http://localhost:${PORT}/api`);
+
+    console.log(
+      `🔗 API Base: http://localhost:${PORT}/api`
+    );
   });
 }
 
