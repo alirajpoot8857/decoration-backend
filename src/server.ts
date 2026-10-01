@@ -31,16 +31,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Allowed Origins
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://decordesigns.online',
-  'http://decordesigns.online',
   'https://www.decordesigns.online',
-  'http://www.decordesigns.online',
-
   ...(process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
+    ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
     : []),
 ];
 
@@ -57,22 +55,18 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin
-      // (mobile apps, curl, server-to-server, etc.)
+      // Allow requests without an origin
       if (!origin) {
         return callback(null, true);
       }
 
-      if (
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('decordesigns.online') ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')
-      ) {
+      // Allow only configured origins
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error('Not allowed by CORS'));
+      console.warn(`CORS blocked origin: ${origin}`);
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
     },
 
     credentials: true,
@@ -93,12 +87,14 @@ app.use(
   })
 );
 
+// JSON Body Parser
 app.use(
   express.json({
     limit: '20mb',
   })
 );
 
+// URL Encoded Body Parser
 app.use(
   express.urlencoded({
     extended: true,
@@ -106,6 +102,7 @@ app.use(
   })
 );
 
+// Logger
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
@@ -160,6 +157,10 @@ if (process.env.NODE_ENV !== 'test') {
 
     console.log(
       `🔗 API Base: http://localhost:${PORT}/api`
+    );
+
+    console.log(
+      `🌐 Allowed Origins: ${allowedOrigins.join(', ')}`
     );
   });
 }
