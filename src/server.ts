@@ -24,6 +24,7 @@ import activityLogRoutes from './routes/activityLogRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -31,18 +32,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allowed Origins
+// ======================================================
+// CORS CONFIGURATION
+// ======================================================
+
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
   'https://decordesigns.online',
   'https://www.decordesigns.online',
-  ...(process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
-    : []),
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
 ];
 
-// Security Middleware
+// ======================================================
+// SECURITY
+// ======================================================
+
 app.use(
   helmet({
     crossOriginResourcePolicy: {
@@ -51,50 +55,43 @@ app.use(
   })
 );
 
-// CORS Configuration
+// ======================================================
+// CORS
+// ======================================================
+
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests without an origin
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      // Allow configured origins
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, origin);
-      }
-
-      console.warn(`CORS blocked origin: ${origin}`);
-      return callback(new Error(`Not allowed by CORS: ${origin}`));
-    },
-
+    origin: allowedOrigins,
     credentials: true,
-
     methods: [
       'GET',
       'POST',
       'PUT',
-      'DELETE',
       'PATCH',
+      'DELETE',
       'OPTIONS',
     ],
-
     allowedHeaders: [
       'Content-Type',
       'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
     ],
+    optionsSuccessStatus: 204,
   })
 );
 
-// JSON Body Parser
+// ======================================================
+// BODY PARSER
+// ======================================================
+
 app.use(
   express.json({
     limit: '20mb',
   })
 );
 
-// URL Encoded Body Parser
 app.use(
   express.urlencoded({
     extended: true,
@@ -102,12 +99,18 @@ app.use(
   })
 );
 
-// Logger
+// ======================================================
+// LOGGER
+// ======================================================
+
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Static Uploads Directory
+// ======================================================
+// STATIC UPLOADS
+// ======================================================
+
 const uploadsDir = path.join(process.cwd(), 'uploads');
 
 app.use(
@@ -115,9 +118,12 @@ app.use(
   express.static(uploadsDir)
 );
 
-// Health Check
+// ======================================================
+// HEALTH CHECK
+// ======================================================
+
 app.get('/api/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
     service: 'LUMIÈRE DECOR API',
     timestamp: new Date().toISOString(),
@@ -125,7 +131,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount Resource API Routes
+// ======================================================
+// API ROUTES
+// ======================================================
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
@@ -145,23 +154,29 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// Global Error Handler
+// ======================================================
+// GLOBAL ERROR HANDLER
+// ======================================================
+
 app.use(errorHandler);
 
-// Start Server
+// ======================================================
+// START SERVER
+// ======================================================
+
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(
-      `✨ LUMIÈRE DECOR API Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`
-    );
-
-    console.log(
-      `🔗 API Base: http://localhost:${PORT}/api`
-    );
-
-    console.log(
-      `🌐 Allowed Origins: ${allowedOrigins.join(', ')}`
-    );
+    console.log('==========================================');
+    console.log('✨ LUMIÈRE DECOR API');
+    console.log('==========================================');
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 API: http://localhost:${PORT}/api`);
+    console.log(`❤️ Health: http://localhost:${PORT}/api/health`);
+    console.log('==========================================');
+    console.log('Allowed CORS Origins:');
+    console.log(allowedOrigins);
+    console.log('==========================================');
   });
 }
 
