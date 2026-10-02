@@ -17,8 +17,9 @@ const registerSchema = zod_1.z.object({
     phone: zod_1.z.string().optional(),
 });
 const loginSchema = zod_1.z.object({
-    email: zod_1.z.string().email('Invalid email address'),
+    email: zod_1.z.string().email('Please enter a valid email address'),
     password: zod_1.z.string().min(1, 'Password is required'),
+    role: zod_1.z.enum(['CUSTOMER', 'STAFF', 'ADMIN']).optional(),
 });
 const register = async (req, res) => {
     try {
@@ -34,7 +35,7 @@ const register = async (req, res) => {
             where: { email: validatedData.email.toLowerCase() },
         });
         if (existingUser) {
-            res.status(400).json({ success: false, message: 'Email already in use' });
+            res.status(400).json({ success: false, message: 'An account with this email already exists' });
             return;
         }
         const hashedPassword = await bcryptjs_1.default.hash(validatedData.password, 10);
@@ -101,13 +102,39 @@ const login = async (req, res) => {
             where: { email: validatedData.email.toLowerCase() },
         });
         if (!user) {
-            res.status(401).json({ success: false, message: 'Invalid email or password' });
+            res.status(401).json({
+                success: false,
+                message: 'No account found with this email. Please check your email or create an account.',
+            });
             return;
         }
         const isMatch = await bcryptjs_1.default.compare(validatedData.password, user.password);
         if (!isMatch) {
-            res.status(401).json({ success: false, message: 'Invalid email or password' });
+            res.status(401).json({
+                success: false,
+                message: 'Incorrect password. Please verify your credentials and try again.',
+            });
             return;
+        }
+        // Role Verification based on portal submitted
+        if (validatedData.role) {
+            const requestedRole = validatedData.role;
+            if (requestedRole === 'ADMIN' && user.role !== 'ADMIN') {
+                res.status(403).json({
+                    success: false,
+                    message: user.role === 'STAFF'
+                        ? 'Access Denied: This is a Staff account. Please sign in via the Staff Terminal tab.'
+                        : 'Access Denied: This email belongs to a Private Client account and does not have Executive Admin privileges.',
+                });
+                return;
+            }
+            if (requestedRole === 'STAFF' && user.role !== 'STAFF' && user.role !== 'ADMIN') {
+                res.status(403).json({
+                    success: false,
+                    message: 'Access Denied: This email is registered as a Private Client, not a Staff Operations member.',
+                });
+                return;
+            }
         }
         const token = (0, jwt_js_1.generateToken)({
             userId: user.id,

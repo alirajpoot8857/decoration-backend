@@ -36,12 +36,61 @@ const PORT = process.env.PORT || 5000;
 // CORS CONFIGURATION
 // ======================================================
 
-const allowedOrigins = [
+const envOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((item) => item.trim()).filter(Boolean)
+  : [];
+
+const defaultOrigins = [
   'https://decordesigns.online',
   'https://www.decordesigns.online',
+  'http://decordesigns.online',
+  'http://www.decordesigns.online',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
 ];
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+const isAllowedOrigin = (origin?: string): boolean => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (/^https?:\/\/([a-zA-Z0-9-]+\.)*decordesigns\.online(:\d+)?$/.test(origin)) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  if (/^https:\/\/[a-zA-Z0-9-]+.*\.vercel\.app$/.test(origin)) return true;
+  return false;
+};
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Request blocked from unauthorized origin: ${origin}`);
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Origin',
+    'X-Requested-With',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers',
+    'Range',
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 204,
+  maxAge: 86400,
+};
+
+// Apply CORS before other middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // ======================================================
 // SECURITY
@@ -52,33 +101,6 @@ app.use(
     crossOriginResourcePolicy: {
       policy: 'cross-origin',
     },
-  })
-);
-
-// ======================================================
-// CORS
-// ======================================================
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: [
-      'GET',
-      'POST',
-      'PUT',
-      'PATCH',
-      'DELETE',
-      'OPTIONS',
-    ],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Accept',
-      'Origin',
-      'X-Requested-With',
-    ],
-    optionsSuccessStatus: 204,
   })
 );
 
